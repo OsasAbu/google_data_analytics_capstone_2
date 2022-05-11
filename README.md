@@ -1,4 +1,4 @@
-**Introduction and background **
+**Introduction and background**
 
 ![](https://user-images.githubusercontent.com/66481995/152797920-9bb3b70e-806b-42b8-806b-5a1f1821140d.PNG)
 
