@@ -1,0 +1,303 @@
+---
+title: "Google Data Analytics Capstone : Bellabeat"
+author: "Osarenoma Abu"
+date: '2022-05-10'
+output: github_document
+---
+
+![](https://user-images.githubusercontent.com/66481995/152797920-9bb3b70e-806b-42b8-806b-5a1f1821140d.PNG)
+
+
+## Introduction and background
+
+Urška Sršen and Sando Mur founded Bellabeat, a high-tech company that manufactures health-focused smart products. Collecting data on activity, sleep, stress, and reproductive health has allowed Bellabeat to empower women with knowledge about their own health and habits. 
+
+By 2016, Bellabeat had opened offices around the world and launched multiple products. Bellabeat products became available through a growing number of online retailers in addition to their own e-commerce channel on their website. The company has invested in traditional advertising media, such as radio, out-of-home billboards, print, and television, but focuses on digital marketing extensively. 
+
+Sršen has asked the marketing analytics team to focus on a Bellabeat product and analyze smart device usage data in order to gain insight into how people are already using their smart devices.
+
+## Business Task
+To analyse FitBit Fitness Tracker Data to gain insights on how consumers are using the smart devices and discover trends for Bellabeat’s marketing strategy
+
+
+## Installing and loading common packages and libraries
+
+```{r}
+library(tidyverse)
+library(janitor) 
+library(ggplot2)
+library(lubridate)  
+library(dplyr)
+library(skimr) 
+```
+
+
+## Loading CSV files
+
+```{r}
+daily_activity <- read.csv("dailyActivity_merged.csv")
+sleep_day <- read.csv("sleepDay_merged.csv")
+```
+
+## Exploring the data
+
+```{r}
+head(daily_activity)
+```
+
+Identifying all the columns in the daily_activity data.
+```{r}
+colnames(daily_activity)
+```
+
+Taking a look at the sleep_day data.
+```{r}
+head(sleep_day)
+```
+
+Identifying all the columns in the daily_activity data.
+```{r}
+colnames(sleep_day)
+```
+
+
+We can see that the three datasets have the 'Id' field - this can be used to merge the datasets into one.
+
+### Cleaning the data
+#### Removing duplicates and checking for missing values
+```{r}
+duplicated(daily_activity[,1:2])
+```
+No duplicates in daily_activity 
+
+```{r}
+dup <- duplicated(sleep_day[,1:2])
+```
+We remove the duplicates found
+
+```{r}
+sleep_day <- sleep_day[!dup,]
+```
+
+```{r}
+sum(is.na(daily_activity))
+sum(is.na(sleep_day))
+```
+No missing values
+
+#### Now we remove any total distance that = 0
+```{r}
+daily_activity <- daily_activity %>% 
+  filter(daily_activity$TotalDistance != 0)
+
+sum(sleep_day$TotalMinutesAsleep =="0")
+
+sum(daily_activity$TotalSteps =="0")
+
+sum(daily_activity$TotalMinutes =="0")
+
+sum(daily_activity$Calories =="0")
+
+```
+
+#### Summary Statistics
+
+```{r}
+n_distinct(daily_activity$Id)
+n_distinct(sleep_day$Id)
+
+```
+We have 33 unique observations for daily_activities and daily_calories but 24 for sleep_day
+
+```{r}
+nrow(daily_activity)
+nrow(sleep_day)
+```
+
+For the daily activity dataframe:
+```{r}
+daily_activity %>%  
+  select(TotalSteps,
+         TotalDistance,
+         SedentaryMinutes) %>%
+  summary()
+```
+
+For the sleep dataframe:
+```{r}
+sleep_day %>%  
+  select(TotalSleepRecords,
+  TotalMinutesAsleep,
+  TotalTimeInBed) %>%
+  summary()
+```
+
+Lets calculate the average total distance 
+
+```{r}
+mean(daily_activity$TotalDistance)
+```
+
+and average total steps
+
+```{r}
+mean(daily_activity$TotalSteps)
+```
+On average, users logged 8329 steps or 6km which is not adequate. As recommended by WHO, an adult female has to aim at least 10,000 steps or 8km per day to benefit from general health, weight loss and fitness improvement. Source: Medical News Today article
+
+
+#### Converting data type for both ActivityDate and SleepDay 
+
+Data type of both columns are character data type, have to be converted to date time 
+
+```{r}
+daily_activity$ActivityDate <- as.POSIXct(daily_activity$ActivityDate, format = "%m/%d/%Y")
+
+class(daily_activity$ActivityDate)
+
+sleep_day$SleepDay <- as.POSIXct(sleep_day$SleepDay, format="%m/%d/%Y %H:%M:%S")
+
+class(sleep_day$SleepDay)
+```
+
+#### Creating new column DayofWeek 
+
+```{r}
+daily_activity$dayofweek <- wday(daily_activity$ActivityDate, label = TRUE)
+
+sleep_day$dayofweek <- wday(sleep_day$SleepDay, label = TRUE)
+```
+
+Checking to see table
+
+```{r}
+head(daily_activity)
+head(sleep_day)
+```
+
+## Creating time taken to fall asleep column 
+```{r}
+
+sleep_day$timetakentosleep 
+
+sleep_day[,"timetakentosleep"] <- (sleep_day[,"TotalTimeInBed"]) - (sleep_day[,"TotalMinutesAsleep"])
+
+```
+
+
+checking to see table with Time taken to sleep added
+```{r}
+head(daily_activity)
+```
+
+
+
+## Data Vizualizations
+
+### Total distance vs Calories
+
+Let's find the relationship between distance and calories 
+
+```{r}
+ggplot(daily_activity, aes(x= TotalDistance, y= Calories)) + geom_point() + geom_smooth(method = lm) + labs(title = "Total Distance vs Calories", x= "total distance", y = "calories")
+```
+
+From the plot, there is a positive relationship between total steps taken and calories burned, as we can see, as total steps taken increases,the amount of calories burned also increases. But expect it to be an almost linear relationship we can see there are some outliers at 0km and >20km. We can also observe that after about 10km the relationship is not as linear suggesting that calories burned after 10km is lower compared to from 0-10km. 
+
+
+#### Frequency of app usage across the week
+
+```{r}
+ggplot(daily_activity, aes(x= dayofweek)) + geom_histogram(stat = "count", fill = "red", width = .6) + labs(title = "App Usage Frequency", x= "day of week", y = "frequency")
+```
+
+We discovered that users track their activity more on the app during midweek from Tuesday to Friday. Noting that the frequency dropped on Friday and continue on weekends and Monday.
+
+
+##### Totals steps vs Sedentary Minutes
+
+Lets find the relationship between total steps and sedentary minutes
+
+```{r}
+ggplot(data=daily_activity, aes(x=TotalSteps, y=SedentaryMinutes)) + geom_point() + labs(title = "Totals steps vs Sedentary Minutes", x= "total steps", y = "sedentary mintes")
+```
+There is a high percentage of sedimentary users not using the app for fitness purposes. The majority of the users take fewer than 10,000 steps daily
+
+
+##### Minutes asleep vs time in bed
+
+Lets find the relationship between minutes asleep and time in bed
+
+```{r}
+ggplot(data=sleep_day, aes(x=TotalMinutesAsleep, y=TotalTimeInBed)) + geom_point() + labs(title = "Minutes asleep vs time in bed", x= "minutes asleep", y = "total time in bed")
+```
+There is an almost linear relationship (as expected) between total time in bed and minutes asleep. There are some outliers indicating that some users spend time in bed not sleeping.
+
+
+#### Day of Week and time taken to fall asleep
+
+```{r}
+ggplot(sleep_day, aes(x=dayofweek, y=timetakentosleep))+
+  geom_bar(stat='summary', fill = "orange")
+```
+From the plot, users take more time to fall asleep during the weekend (Sat-Sun). But during the weekday, users take less time to fall asleep. This could be because of work during the weekdays and a lot of leisure time or spare time during the weekends to do more activities before going to bed.
+
+
+
+#### Percentage of minutes spent on activity 
+
+##### Creating a new dataframe with the required values and headings
+
+```{r}
+minutes.df <- data.frame(time = c("VeryActiveMinutes", "FairlyActiveMinutes", "LightlyActiveMinutes", "SedentaryMinutes"), value = c(sum(daily_activity$VeryActiveMinutes), sum(daily_activity$FairlyActiveMinutes), sum(daily_activity$LightlyActiveMinutes), sum(daily_activity$SedentaryMinutes)))
+
+
+```
+
+
+##### Calculating the various percentages of minutes 
+```{r}
+minutes.df <- minutes.df %>% 
+  mutate(percentage = format(round(value/sum(minutes.df$value) * 100), nsmall =2 )) %>% 
+  arrange(percentage)
+
+```
+
+
+
+Plotting the percentages
+
+```{r}
+ggplot(minutes.df, aes(x="", y=value, fill=time))+
+  geom_bar(width = 2, stat = "identity") +
+  coord_polar("y", start = 0)+
+  geom_text(aes(label =percentage , angle = 45), position = position_stack(vjust=0.5))+
+  theme_void() + labs(title = "Percentage of Activity in Minutes")
+```
+As seen from the pie chart,
+
+Sedentary minutes has the largest segment at 79%.
+This is an indication that users are using the app to log daily activities such as daily commuting, movement from one place to another or running domestic errands as opposed to using it to track fitness activities as seen from minor percentage of fairly active activity (1%) and very active activity (2%). This is definitely discouraging as FitBit app is not currently used for the purpose it was designed.
+
+
+### Parting Thoughts
+
+##### Trends identified
+
+ *  A high proportion of the users (79%) are using the FitBit app to track sedentary      activities (ie. inactive minutes ) and not using it for tracking their health habits.
+Users prefer to track their activities during weekdays as compared to weekends - perhaps because they spend more time outside on weekdays and stay in on weekends.
+
+
+ * We discovered that users track their activity more on the app during midweek from Tuesday to Friday. Noting that the frequency dropped on Friday and continue on weekends and Monday
+
+
+##### Using the trends help influence Bellabeat marketing strategy
+
+ * Bellabeat should promote greater incorporation of exercising/fitness into their customers’ daily routines throughout the week, this will encourage the women to increase their active minutes as well.
+
+ * The marketing team can educate and inform users with knowledge about fitness and it's benefits through sensitization campaigns, suggest fun and daily challenges with different types of exercise (eg. complete 1000 steps daily with points as a reward).
+
+ * To address the drop in activity on the app, the Bellabeat app can also send regular notification to encourage users to exercise.
+
+
+
